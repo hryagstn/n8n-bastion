@@ -1,0 +1,189 @@
+{
+  "name": "02 - Apache Health Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "apache",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b2db669b-666f-4769-8792-305089226ffb",
+      "name": "Webhook",
+      "webhookId": "75ce4065-4735-4d8a-b373-e327fdc34d23",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Bastion Webhook Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body ?? $input.first().json;\n\nreturn [{\n  json: {\n    wasDown: body.was_down === true,\n    restartSuccess: body.restart_success === true,\n    restartAttempted: body.restart_attempted === true,\n    hostname: String(body.hostname ?? 'unknown'),\n    timestamp: String(body.timestamp ?? new Date().toISOString()),\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "d923dbdf-b2b4-4947-bb47-502bda6e6a61",
+      "name": "Parse Payload"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        624,
+        96
+      ],
+      "id": "3aa4b650-468b-4369-8df0-d60a4645b826",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        832,
+        -96
+      ],
+      "id": "a0f7f719-6c0f-4188-9e8b-39d169e10d10",
+      "name": "Send a text message",
+      "webhookId": "a2b2f512-7c81-4cd9-be8f-c12811ae7347",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Telegram Bastion"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "97ecfa03-deb2-41eb-9ca6-4383b810d08d",
+              "leftValue": "={{ $json.wasDown }}",
+              "rightValue": "=true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "52d2d79d-4406-4fe9-8c71-bd80b4b9c604",
+      "name": "Is Apache Down?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst esc = (str) => String(str ?? '')\n  .replace(/([_*[\\]()~`>#+\\-=|{}.!\\\\])/g, '\\\\$1');\n\nconst ts = new Date(d.timestamp).toLocaleString('id-ID', {\n  timeZone: 'Asia/Jakarta',\n  day: '2-digit', month: '2-digit', year: 'numeric',\n  hour: '2-digit', minute: '2-digit',\n});\n\nlet msg = '';\nif (d.restartSuccess) {\n  msg = `\u26a0\ufe0f *Apache Monitor*\\n\ud83d\udda5 ${esc(d.hostname)}\\n\ud83d\udcc5 ${esc(ts)}\\n\\n`;\n  msg += `Apache terdeteksi *DOWN*\\\\.\\n`;\n  msg += `\u2705 Auto\\\\-restart *BERHASIL*\\\\. Server kembali online\\\\.`;\n} else {\n  msg = `\ud83d\udd34 *Apache Monitor*\\n\ud83d\udda5 ${esc(d.hostname)}\\n\ud83d\udcc5 ${esc(ts)}\\n\\n`;\n  msg += `Apache terdeteksi *DOWN*\\\\.\\n`;\n  msg += `\u274c Auto\\\\-restart *GAGAL*\\\\. Intervensi manual diperlukan\\\\!`;\n}\n\nreturn [{ json: { message: msg } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "9877269e-948b-4c89-ba76-dbf4635690ca",
+      "name": "Formatting Message"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Payload": {
+      "main": [
+        [
+          {
+            "node": "Is Apache Down?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Apache Down?": {
+      "main": [
+        [
+          {
+            "node": "Formatting Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatting Message": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "253ba044-4d4b-4f16-8255-a78bda2f6298",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "id": "T6CMkt7fCy8M6bsI",
+  "tags": []
+}

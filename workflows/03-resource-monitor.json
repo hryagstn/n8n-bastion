@@ -1,0 +1,189 @@
+{
+  "name": "03 - Resource Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "resource",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ea7a8790-75bc-472f-af2d-1a37dabcb0f2",
+      "name": "Webhook",
+      "webhookId": "6391783d-736c-4763-a5e4-71c901fe9015",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Bastion Webhook Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "80de8254-3ee0-41c6-ac9a-e211bc8fc768",
+              "leftValue": "={{ $json.shouldAlert }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "e3760864-5d54-4ad2-b503-d9bbd6dc3f9d",
+      "name": "If"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        624,
+        96
+      ],
+      "id": "dcd94913-6a91-4b0f-b36a-d003b303120f",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        832,
+        -96
+      ],
+      "id": "2360c8a5-08b9-4426-8709-8c2bd02f0121",
+      "name": "Send a text message",
+      "webhookId": "c9995454-9052-4a79-acd7-cdf8a5a7e24b",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Telegram Bastion"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body ?? $input.first().json;\n\nconst disk = parseInt(body.disk ?? 0);\nconst ram = parseInt(body.ram ?? 0);\nconst diskThreshold = parseInt(body.disk_threshold ?? 85);\nconst ramThreshold = parseInt(body.ram_threshold ?? 90);\n\nconst diskAlert = disk >= diskThreshold;\nconst ramAlert = ram >= ramThreshold;\n\nconst icon = (val, warn, crit) =>\n  val >= crit ? '\ud83d\udd34' : val >= warn ? '\ud83d\udfe0' : val >= (warn - 15) ? '\ud83d\udfe1' : '\u2705';\n\nreturn [{\n  json: {\n    disk, ram,\n    diskThreshold, ramThreshold,\n    diskAlert, ramAlert,\n    shouldAlert: diskAlert || ramAlert,\n    diskIcon: icon(disk, diskThreshold, 95),\n    ramIcon: icon(ram, ramThreshold, 95),\n    hostname: body.hostname ?? 'unknown',\n    timestamp: body.timestamp ?? new Date().toISOString(),\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "b8a0cbb8-6c69-45d3-8178-5163f22ef4df",
+      "name": "Parse Payload"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst esc = (str) => String(str ?? '')\n  .replace(/([_*[\\]()~`>#+\\-=|{}.!\\\\])/g, '\\\\$1');\n\nconst ts = new Date(d.timestamp).toLocaleString('id-ID', {\n  timeZone: 'Asia/Jakarta',\n  day: '2-digit', month: '2-digit', year: 'numeric',\n  hour: '2-digit', minute: '2-digit',\n});\n\nlet msg = `\u26a0\ufe0f *Resource Alert*\\n`;\nmsg += `\ud83d\udda5 ${esc(d.hostname)}\\n`;\nmsg += `\ud83d\udcc5 ${esc(ts)}\\n\\n`;\nmsg += `${d.diskIcon} *Disk:* ${d.disk}%`;\nmsg += d.diskAlert ? ` \\\\(threshold: ${d.diskThreshold}%\\\\)\\n` : '\\n';\nmsg += `${d.ramIcon} *RAM:* ${d.ram}%`;\nmsg += d.ramAlert ? ` \\\\(threshold: ${d.ramThreshold}%\\\\)\\n` : '\\n';\nmsg += `\\n_Segera periksa penggunaan resource server_`;\n\nreturn [{ json: { message: msg } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "c2c0bf13-2a67-4c0a-93e4-bd9d12a76eac",
+      "name": "Formatting Message"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Formatting Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Payload": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatting Message": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c15670a9-d369-4def-88f3-c70414299528",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "id": "yaqnTR5gl7SQ0oUQ",
+  "tags": []
+}

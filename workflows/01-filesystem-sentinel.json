@@ -1,0 +1,190 @@
+{
+  "name": "01 - Filesystem Sentinel",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sentinel",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "21f89970-75df-4266-bfef-4b479a0f70be",
+      "name": "Webhook",
+      "webhookId": "0b4a7a8e-f0e0-48da-9500-bc964f48b635",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Bastion Webhook Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "294389a0-fb72-43b9-b734-363d5dff580f",
+              "leftValue": "={{ $json.hasFindings }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "f72a0d12-ff14-43e8-89d7-ddd7600a1e2b",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body ?? $input.first().json;\n\nconst findings = body.findings ?? [];\nconst critical = findings.filter(f => f.severity === 'CRITICAL');\nconst high = findings.filter(f => f.severity === 'HIGH');\n\nreturn [{\n  json: {\n    hasFindings: critical.length > 0 || high.length > 0,\n    total: body.total ?? findings.length,\n    findings,\n    critical,\n    high,\n    hostname: body.hostname ?? 'unknown',\n    scannedAt: body.scanned_at ?? new Date().toISOString(),\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "50682169-c0eb-4c21-8b9c-032f5abb6dbd",
+      "name": "Parse Payload"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        832,
+        -96
+      ],
+      "id": "04b9c2e7-c3d3-4402-a50a-084d0abf52c4",
+      "name": "Telegram",
+      "webhookId": "76fecf28-8664-4a0b-a5ed-088f8b9abc77",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Telegram Bastion"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        624,
+        96
+      ],
+      "id": "13c8c232-5948-4fc8-b813-47db3e335020",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst esc = (str) => String(str ?? '')\n  .replace(/([_*[\\]()~`>#+\\-=|{}.!\\\\])/g, '\\\\$1');\n\nconst ts = new Date(data.scannedAt).toLocaleString('id-ID', {\n  timeZone: 'Asia/Jakarta',\n  day: '2-digit', month: '2-digit', year: 'numeric',\n  hour: '2-digit', minute: '2-digit',\n});\n\nlet msg = `\ud83d\udea8 *SECURITY ALERT*\\n`;\nmsg += `\ud83d\udda5 ${esc(data.hostname)}\\n`;\nmsg += `\ud83d\udcc5 ${esc(ts)}\\n\\n`;\nmsg += `Total findings: *${data.total}*\\n`;\nmsg += `\ud83d\udd34 CRITICAL: *${data.critical.length}*\\n`;\nmsg += `\ud83d\udfe0 HIGH: *${data.high.length}*\\n`;\n\nif (data.critical.length > 0) {\n  msg += `\\n*\ud83d\udd34 CRITICAL:*\\n`;\n  data.critical.slice(0, 3).forEach(f => {\n    msg += `\u2022 \\`${esc(f.file)}\\`\\n  _${esc(f.description)}_\\n`;\n  });\n  if (data.critical.length > 3) {\n    msg += `_\\\\+${data.critical.length - 3} lainnya_\\n`;\n  }\n}\n\nif (data.high.length > 0) {\n  msg += `\\n*\ud83d\udfe0 HIGH:*\\n`;\n  data.high.slice(0, 3).forEach(f => {\n    msg += `\u2022 \\`${esc(f.file)}\\`\\n  _${esc(f.description)}_\\n`;\n  });\n  if (data.high.length > 3) {\n    msg += `_\\\\+${data.high.length - 3} lainnya_\\n`;\n  }\n}\n\nmsg += `\\n_Jalankan scalpel:scan untuk detail lengkap_`;\n\nreturn [{ json: { message: msg } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "60abed60-65f0-4e6f-8c55-aa91eebbcec3",
+      "name": "Formatting Message"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Payload": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Formatting Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatting Message": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7123e598-6769-4813-8019-67ae17e959d7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "id": "2wuHiFWCuXe8Z8Zz",
+  "tags": []
+}

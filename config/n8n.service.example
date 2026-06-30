@@ -1,0 +1,47 @@
+# =============================================================
+# n8n-bastion systemd Service
+# =============================================================
+# Copy this file to /etc/systemd/system/n8n.service
+# Replace YOUR_LINUX_USERNAME and YOUR_PASSWORD with real values
+#
+# After copying:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable n8n
+#   sudo systemctl start n8n
+# =============================================================
+
+[Unit]
+Description=n8n-bastion Workflow Automation
+Documentation=https://github.com/hryagstn/n8n-bastion
+After=network.target
+
+[Service]
+Type=simple
+User=YOUR_LINUX_USERNAME
+
+# Network — listen on localhost only (access via SSH tunnel)
+Environment=N8N_HOST=127.0.0.1
+Environment=N8N_PORT=5678
+Environment=N8N_PROTOCOL=http
+Environment=WEBHOOK_URL=http://127.0.0.1:5678/
+
+# Authentication
+Environment=N8N_BASIC_AUTH_ACTIVE=true
+Environment=N8N_BASIC_AUTH_USER=admin
+Environment=N8N_BASIC_AUTH_PASSWORD=YOUR_PASSWORD
+
+# Data directory
+Environment=N8N_USER_FOLDER=/home/YOUR_LINUX_USERNAME/.n8n
+
+# Logging
+Environment=N8N_LOG_LEVEL=info
+Environment=N8N_LOG_OUTPUT=file
+Environment=N8N_LOG_FILE_LOCATION=/home/YOUR_LINUX_USERNAME/.n8n/logs/n8n.log
+
+# Process
+ExecStart=/usr/bin/n8n start
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

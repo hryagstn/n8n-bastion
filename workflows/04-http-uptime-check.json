@@ -1,0 +1,189 @@
+{
+  "name": "04 - HTTP Uptime Check",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uptime",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ead2b2c6-f810-44c8-883d-ef6aebc520c9",
+      "name": "Webhook",
+      "webhookId": "c253f1b8-7862-4ae3-9ba4-c0160f21b636",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Bastion Webhook Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body ?? $input.first().json;\n\nreturn [{\n  json: {\n    isDown: body.is_down ?? false,\n    statusCode: body.status_code ?? 0,\n    responseTime: body.response_time_ms ?? null,\n    reason: body.reason ?? 'Unknown',\n    appUrl: body.app_url ?? '',\n    hostname: body.hostname ?? 'unknown',\n    timestamp: body.timestamp ?? new Date().toISOString(),\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "8dd6d23a-42c9-41a2-b4ba-766c6f5c2716",
+      "name": "Parse Payload"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "722bf848-52e0-4a67-b965-eee4c6af99d0",
+              "leftValue": "={{ $json.isDown }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "9a8f493e-da99-4354-85b1-3318ec6c27a6",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        832,
+        -96
+      ],
+      "id": "7c5edde5-abcb-4d8a-a6ec-da5ab1988b11",
+      "name": "Send a text message",
+      "webhookId": "3e7b21f1-2438-4529-bd05-af14d261ab04",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Telegram Bastion"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        624,
+        96
+      ],
+      "id": "357bbea9-12a0-4080-b664-ad8256a9effb",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst esc = (str) => String(str ?? '')\n  .replace(/([_*[\\]()~`>#+\\-=|{}.!\\\\])/g, '\\\\$1');\n\nconst ts = new Date(d.timestamp).toLocaleString('id-ID', {\n  timeZone: 'Asia/Jakarta',\n  day: '2-digit', month: '2-digit', year: 'numeric',\n  hour: '2-digit', minute: '2-digit',\n});\n\nconst statusInfo = d.statusCode === 0\n  ? `Tidak bisa dijangkau \\\\(timeout/error\\\\)`\n  : `HTTP Status: *${d.statusCode}*`;\n\nlet msg = `\ud83d\udd34 *Uptime Alert*\\n`;\nmsg += `\ud83d\udda5 ${esc(d.hostname)}\\n`;\nmsg += `\ud83c\udf10 ${esc(d.appUrl)}\\n`;\nmsg += `\ud83d\udcc5 ${esc(ts)}\\n\\n`;\nmsg += `\u274c Aplikasi *tidak merespons*\\n`;\nmsg += `${statusInfo}\\n\\n`;\nmsg += `_Periksa PHP\\\\-FPM, Laravel error log, atau koneksi database_`;\n\nreturn [{ json: { message: msg } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "06b79d57-c4b8-4044-b7ed-093778ab62e0",
+      "name": "Formatting Message"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Payload": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Formatting Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatting Message": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "89034745-461e-4d88-b61d-26938dea50d1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "id": "7xmJ33EsO5NZfhqA",
+  "tags": []
+}

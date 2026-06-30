@@ -1,0 +1,15 @@
+# Sensitive configuration — never commit real values
+bastion.env
+*.env
+!*.env.example
+
+# Logs
+logs/
+*.log
+
+# n8n data directory
+.n8n/
+
+# OS
+.DS_Store
+Thumbs.db
