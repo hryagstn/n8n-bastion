@@ -219,6 +219,11 @@ Add:
 
 ## Section 13 — Test Each Script Manually
 
+Before enabling cron, review the [project limitations](../README.md#limitations),
+especially the automatic remediation performed by the scripts. The webhook
+schemas and direct `curl` tests are documented in
+[Webhook Payload Reference](webhook-payloads.md).
+
 ### Test Sentinel
 
 ```bash

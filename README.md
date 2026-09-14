@@ -38,6 +38,15 @@ This keeps n8n lightweight: no persistent polling, no shell access required from
 
 ---
 
+## Project Status
+
+`n8n-bastion` is an early-stage monitoring toolkit. It is currently deployed on
+the environment described in the included case study, but it has not undergone
+an independent security audit. Review the scripts and test every watchdog in a
+non-production environment before enabling its cron entries.
+
+---
+
 ## Watchdogs
 
 | # | Script | Trigger | What It Does |
@@ -131,6 +140,9 @@ After importing each workflow:
 3. Click **Publish**
 4. Copy the **Production URL** from the Webhook node → update `bastion.env`
 
+See [Webhook Payload Reference](docs/webhook-payloads.md) for the request schema
+and a test payload for each workflow.
+
 ---
 
 ## Project Structure
@@ -153,6 +165,7 @@ n8n-bastion/
 ├── docs/
 │   ├── setup.md                  # Full setup guide
 │   ├── telegram-setup.md         # Telegram bot setup guide
+│   ├── webhook-payloads.md       # Webhook schemas and test requests
 │   └── screenshots/              # Dashboard and alert screenshots
 └── examples/
     └── paketlebaranku/           # Real-world case study
@@ -174,6 +187,40 @@ Access the n8n UI via SSH tunnel from your local machine:
 ssh -fNL 5678:127.0.0.1:5678 YOUR_USER@YOUR_VPS_IP
 # Then open: http://localhost:5678
 ```
+
+---
+
+## Limitations
+
+- **This is not a root of trust.** The checks run on the VPS they inspect. An
+  attacker with sufficient access can modify the scripts, configuration,
+  baselines, logs, or n8n workflows and suppress an alert.
+- **A clean result does not prove a clean host.** The filesystem sentinel only
+  reports patterns and changes recognized by Laravel Scalpel. It does not
+  replace an EDR, WAF, malware analysis, centralized logging, or a proper
+  incident-response process.
+- **Full server outages require external monitoring.** The uptime check and n8n
+  run on the same VPS. Neither can notify you if the host, network, or n8n
+  process is completely unavailable.
+- **Automatic remediation can be disruptive.** The current scripts may
+  quarantine CRITICAL files, restart Apache or PHP-FPM, clear Laravel caches,
+  remove old files from `/tmp`, and drop Linux filesystem caches. Review these
+  actions, permissions, paths, and service names before enabling cron.
+- **The shared webhook secret has no replay protection.** Use HTTPS, restrict
+  access to the webhook where possible, rotate the secret if exposed, and do
+  not treat the header as a substitute for network-level controls.
+- **Webhook delivery is not durable.** Requests have limited retries and no
+  persistent queue or idempotency key. A timeout may lose an alert or cause a
+  duplicate Telegram notification.
+- **Platform support is intentionally narrow.** The supplied scripts target
+  Ubuntu, systemd, Apache, PHP-FPM, and Laravel. Other distributions, web
+  servers, containers, and service names require adaptation and testing.
+- **The filesystem baseline must be trustworthy.** Create it only after a known
+  clean deployment, protect the baseline and signing material, and regenerate
+  it after legitimate application changes.
+
+If compromise is suspected, preserve evidence and rebuild from a trusted image.
+Do not rely on automatic recovery to make the host trustworthy again.
 
 ---
 

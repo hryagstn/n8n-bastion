@@ -6,8 +6,8 @@ We actively support and patch security vulnerabilities in the following versions
 
 | Version | Supported          |
 | ------- | ------------------ |
-| v1.x    | :white_check_mark: |
-| < v1.0  | :x:                |
+| v0.1.x  | :white_check_mark: |
+| < v0.1  | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -28,3 +28,6 @@ For maximum security when deploying **n8n-bastion**:
 1. **Secure Your Webhook URLs:** Ensure your n8n webhook URLs utilize HTTPS and, if possible, incorporate token/authentication headers to verify that requests genuinely originate from your VPS sentinel.
 2. **Restrict Script Access:** Limit read/write permissions on `/opt/n8n-bastion/` and scripts to root or authorized users only (`chmod 700` or similar).
 3. **Keep n8n Updated:** Regularly update your n8n instance to get the latest security patches.
+
+Operational and architectural limitations are documented in the
+[README](README.md#limitations). Review them before enabling the cron jobs.
