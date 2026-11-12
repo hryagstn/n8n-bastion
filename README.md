@@ -230,14 +230,6 @@ Do not rely on automatic recovery to make the host trustworthy again.
 
 ---
 
-## Author & Commercial Support
-
-[Harry Agustiana](https://github.com/hryagstn), founder of [Wanoh Digital](https://wanohdigital.biz.id) in Bandung, Indonesia, maintains n8n-bastion.
-
-If your VPS or web application has suffered a live intrusion and your team needs hands-on backdoor cleanup, server hardening, or ongoing maintenance, see [Wanoh Digital Incident Recovery](https://wanohdigital.biz.id/website-kena-hack) or request a free external check at [wanohdigital.biz.id/cek-website](https://wanohdigital.biz.id/cek-website).
-
----
-
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
